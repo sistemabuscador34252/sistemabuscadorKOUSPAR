@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SISTEMA COMPROMETIDO</title>
+    <style>
+      
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Playfair+Display:ital,wght@1,600&family=Quicksand:wght@400;600;700&display=swap');
+
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #020202; overflow: hidden; }
+
+        .crt-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 2px, 3px 100%; z-index: 998; pointer-events: none;
+            box-shadow: inset 0 0 120px rgba(0,0,0,0.95);
+        }
+
+       
+        .scanline {
+            width: 100%; height: 8px; background: rgba(0, 255, 0, 0.15);
+            position: fixed; top: -10px; z-index: 999; pointer-events: none;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+            animation: scanline 8s linear infinite;
+        }
+        @keyframes scanline { 0% { top: -10px; } 100% { top: 100vh; } }
+
+     
+        #fase-hacker { position: relative; width: 100%; height: 100%; z-index: 10; font-family: 'Fira Code', monospace; }
+        
+        #boot-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; color: #aaa; padding: 30px; z-index: 5; box-sizing: border-box;
+            font-size: 15px; line-height: 1.5; text-shadow: 0 0 2px rgba(255,255,255,0.3);
+        }
+        .boot-cursor { display: inline-block; width: 10px; height: 15px; background: #aaa; animation: blink 1s step-end infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        #matrix { display: none; position: absolute; top: 0; left: 0; z-index: 1; opacity: 0.9; }
+
+        .hacker-panel {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0, 10, 0, 0.95); border: 1px solid rgba(0, 255, 0, 0.5); 
+            box-shadow: 0 0 40px rgba(0, 255, 0, 0.15), inset 0 0 20px rgba(0, 255, 0, 0.1);
+            padding: 50px; text-align: center; z-index: 2; width: 85%; max-width: 650px;
+            display: none; backdrop-filter: blur(5px);
+        }
+
+        .hacker-btn {
+            background: rgba(0, 20, 0, 0.8); color: #0f0; border: 1px solid #0f0; padding: 15px 40px;
+            font-size: 1.3rem; text-transform: uppercase; cursor: pointer; letter-spacing: 4px;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); font-family: 'Fira Code', monospace; margin-top: 30px;
+            box-shadow: 0 0 15px rgba(0,255,0,0.2); position: relative; overflow: hidden;
+        }
+        .hacker-btn::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 0, 0.4), transparent);
+            transition: left 0.5s;
+        }
+        .hacker-btn:hover::before { left: 100%; }
+        .hacker-btn:hover { background: #0f0; color: #000; box-shadow: 0 0 40px #0f0; font-weight: bold; transform: scale(1.05); }
+
+        .hacker-title { color: #f00; text-shadow: 0 0 20px #f00; font-size: 2.5rem; margin-top: 0; letter-spacing: 3px; animation: textGlitch 3s infinite; }
+        .hacker-text { color: #0f0; font-size: 1.15rem; line-height: 1.9; text-shadow: 0 0 5px rgba(0,255,0,0.6); }
+        .ko-brand { color: #fff; font-weight: bold; font-size: 1.7rem; text-shadow: 0 0 15px #fff; letter-spacing: 6px;}
+
+        @keyframes textGlitch {
+            0%, 100% { text-shadow: 0 0 20px #f00; transform: translate(0); }
+            92% { text-shadow: 0 0 20px #f00; transform: translate(0); }
+            94% { text-shadow: -3px 0 #0ff, 3px 0 #f00; transform: translate(-2px, 1px); }
+            96% { text-shadow: 3px 0 #0ff, -3px 0 #f00; transform: translate(2px, -1px); }
+            98% { text-shadow: 0 0 20px #f00; transform: translate(0); }
+        }
+
+        #terminal-wrapper {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 4;
+        }
+        #terminal-hack {
+            width: 100%; height: calc(100% - 60px); background-color: rgba(3, 3, 3, 0.98); 
+            padding: 30px; box-sizing: border-box; color: #0f0; overflow-y: hidden;
+        }
+        
+        #terminal-status-bar {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 60px;
+            background: #0a0a0a; border-top: 2px solid #0f0; display: flex; align-items: center;
+            padding: 0 30px; box-sizing: border-box; box-shadow: 0 -10px 30px rgba(0,255,0,0.1);
+        }
+        .progress-master { flex-grow: 1; height: 20px; border: 1px solid #0f0; margin: 0 20px; position: relative; }
+        .progress-master-fill { height: 100%; background: #0f0; width: 0%; box-shadow: 0 0 10px #0f0; transition: width 0.3s; }
+        .progress-text { color: #0f0; font-weight: bold; font-size: 1.2rem; min-width: 120px; }
+
+        .log-line { font-size: 14px; margin: 5px 0; text-shadow: 0 0 3px rgba(0,255,0,0.8); }
+        .log-time { color: #666; margin-right: 12px; }
+        .log-ip { color: #00ffff; }
+        .log-hex { color: #777; font-size: 12px; margin-left: 15px; }
+        .status-warn { color: #ffaa00; font-weight: bold; }
+        .status-done { color: #f00; font-weight: bold; text-shadow: 0 0 10px #f00; }
+
+        #btn-continuar-container { display: none; position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 6; }
+
+  
+        .tv-off { animation: tv-turn-off 0.7s cubic-bezier(0.23, 1, 0.32, 1) forwards; z-index: 200; position: absolute; width:100%; height:100%; background:#fff;}
+        @keyframes tv-turn-off {
+            0% { transform: scale(1, 1) translate3d(0, 0, 0); filter: brightness(1); }
+            50% { transform: scale(1, 0.002) translate3d(0, 0, 0); filter: brightness(15); }
+            100% { transform: scale(0, 0.002) translate3d(0, 0, 0); filter: brightness(0); }
+        }
+        
+        #fase-tierna {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+ 
+            background-color: #ffdde1; z-index: 20; overflow: hidden; font-family: 'Quicksand', sans-serif;
+        }
+        .orbe { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.7; animation: moverOrbe 20s infinite alternate ease-in-out; }
+        .orbe-1 { width: 600px; height: 600px; background: #ff9a9e; top: -100px; left: -100px; animation-delay: 0s; }
+        .orbe-2 { width: 500px; height: 500px; background: #fecfef; bottom: -100px; right: -50px; animation-delay: -5s; }
+        .orbe-3 { width: 700px; height: 700px; background: #ffc3a0; top: 40%; left: 30%; animation-delay: -10s; }
+
+        @keyframes moverOrbe { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(150px, 100px) scale(1.1); } 100% { transform: translate(-100px, 150px) scale(0.9); } }
+
+
+        .css-heart {
+            position: absolute; width: 22px; height: 22px; background: rgba(255, 255, 255, 0.8);
+            transform: rotate(-45deg); box-shadow: 0 0 20px rgba(255, 255, 255, 0.6); backdrop-filter: blur(4px);
+        }
+        .css-heart::before, .css-heart::after {
+            content: ""; position: absolute; width: 22px; height: 22px; background: rgba(255, 255, 255, 0.8); border-radius: 50%;
+        }
+        .css-heart::before { top: -11px; left: 0; }
+        .css-heart::after { top: 0; left: 11px; }
+
+        .glass-panel {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.25); border-radius: 30px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.5); 
+            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); 
+            padding: 60px 50px; width: 85%; max-width: 700px; text-align: center;
+            animation: deslizarArriba 1s cubic-bezier(0.16, 1, 0.3, 1); z-index: 25;
+        }
+        @keyframes deslizarArriba { from { transform: translate(-50%, -20%); opacity: 0; } to { transform: translate(-50%, -50%); opacity: 1; } }
+
+        .encuesta-header { margin-bottom: 40px; }
+        .progreso-texto { font-size: 1rem; color: #a93259; font-weight: 700; margin-bottom: 15px; letter-spacing: 3px; text-transform: uppercase; }
+        .barra-progreso-bg { width: 100%; height: 8px; background: rgba(255, 255, 255, 0.4); border-radius: 10px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
+        .barra-progreso-fill { height: 100%; background: linear-gradient(90deg, #ff758c 0%, #ff7eb3 100%); width: 0%; transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 0 15px rgba(255, 117, 140, 0.8); }
+        
+        #pregunta-titulo { color: #5a1435; font-size: 2rem; margin: 0 0 35px 0; font-weight: 700; min-height: 90px; display: flex; align-items: center; justify-content: center; line-height: 1.4; text-shadow: 0 2px 5px rgba(255,255,255,0.5); }
+
+        .btn-glass {
+            display: block; width: 100%; margin: 18px 0; padding: 22px;
+            background: rgba(255, 255, 255, 0.4); color: #5a1435; 
+            border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 20px; 
+            font-size: 1.2rem; font-weight: 700; font-family: 'Quicksand', sans-serif;
+            cursor: pointer; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.03); position: relative; overflow: hidden;
+        }
+        .btn-glass:hover {
+            background: rgba(255, 255, 255, 0.9); border-color: #fff;
+            transform: translateY(-5px) scale(1.03); box-shadow: 0 20px 30px rgba(255, 117, 140, 0.25);
+            color: #d81b60;
+        }
+
+        .chispa-magica {
+            position: fixed; width: 8px; height: 8px; border-radius: 50%; background: #fff;
+            box-shadow: 0 0 15px #fff, 0 0 30px #ff758c; pointer-events: none; z-index: 9999;
+        }
+
+   
+        #carta-escena {
+            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            perspective: 2500px; width: 400px; height: 560px; z-index: 30;
+        }
+     
+        .carta-levitacion { width: 100%; height: 100%; animation: levitacion 6s ease-in-out infinite alternate; }
+        @keyframes levitacion { 0% { transform: translateY(-15px); } 100% { transform: translateY(15px); } }
+
+  
+        .carta-parallax { width: 100%; height: 100%; transition: transform 0.1s ease-out; transform-style: preserve-3d; }
+
+        .carta {
+            width: 100%; height: 100%; position: relative; transform-style: preserve-3d;
+            transition: transform 1.5s cubic-bezier(0.2, 0.8, 0.2, 1); cursor: pointer;
+        }
+        .carta.abierta { transform: rotateY(180deg) scale(1.1); }
+
+        .carta::after {
+            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,0.7) 25%, transparent 30%);
+            z-index: 10; border-radius: 24px; opacity: 0; transition: opacity 0.5s; pointer-events: none;
+        }
+        .carta:hover::after { opacity: 1; animation: brilloHolo 2.5s infinite; }
+        @keyframes brilloHolo { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+        .cara {
+            position: absolute; width: 100%; height: 100%; backface-visibility: hidden;
+            border-radius: 24px; display: flex; align-items: center; justify-content: center;
+            flex-direction: column; padding: 40px 35px; box-sizing: border-box; text-align: center;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.15), inset 0 0 0 12px rgba(255,255,255,0.5);
+        }
+        
+        .cara-frente { background: linear-gradient(135deg, #ffffff 0%, #fff0f5 100%); border: 1px solid #fff; }
+        
+        .sello-decorativo {
+            width: 100px; height: 100px; background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; color: #fff; 
+            font-family: 'Playfair Display', serif; font-size: 3rem; margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(255, 117, 140, 0.6); border: 3px dashed rgba(255,255,255,0.9);
+            animation: pulseSello 2s infinite alternate;
+        }
+        @keyframes pulseSello { 0% { transform: scale(1); box-shadow: 0 10px 30px rgba(255, 117, 140, 0.6); } 100% { transform: scale(1.05); box-shadow: 0 15px 40px rgba(255, 117, 140, 0.9); } }
+        
+        .cara-frente h3 { font-family: 'Playfair Display', serif; color: #a93259; font-size: 2.8rem; margin: 0; font-style: italic; }
+        .cara-frente p { color: #880e4f; font-size: 1.2rem; margin-top: 15px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; }
+
+        .cara-atras {
+            transform: rotateY(180deg); background: #fff; border: 1px solid #ffe4e1;
+            background-image: radial-gradient(#ffc0cb 1px, transparent 1px); background-size: 30px 30px;
+        }
+        
+        .cara-atras h2 { font-family: 'Playfair Display', serif; color: #d81b60; font-size: 2.5rem; margin-top: 0; margin-bottom: 20px; border-bottom: 2px solid #ffe4e1; padding-bottom: 12px; font-style: italic; width: 90%; }
+        .cara-atras p { font-size: 1.2rem; line-height: 1.7; color: #4a1329; font-weight: 600; margin: 10px 0; width: 100%; text-shadow: 0 1px 1px rgba(255,255,255,0.8); }
+        .firma { font-family: 'Playfair Display', serif; font-size: 2rem; color: #a93259; margin-top: 25px; display: block; text-align: right; width: 90%; font-style: italic; font-weight: bold; }
+
+    </style>
+</head>
+<body>
+
+    <div class="scanline"></div>
+    <div class="crt-overlay"></div>
+
+    <div id="fase-hacker">
+        
+        <div id="boot-screen"></div>
+
+        <canvas id="matrix"></canvas>
+
+        <div class="hacker-panel" id="inicio-container">
+            <h2 class="hacker-title">SISTEMA CIFRADO</h2>
+            <p class="hacker-text" style="margin-bottom: 30px; color:#aaa;">Autenticacion requerida para acceder al nodo maestro.</p>
+            <button class="hacker-btn" id="btn-empezar">Iniciar Protocolo</button>
+        </div>
+
+        <div class="hacker-panel" id="modal-privacidad">
+            <h2 class="hacker-title">ADVERTENCIA CRITICA</h2>
+            <p class="hacker-text">Al proceder, autorizas la transferencia de datos encriptados, historial de red y acceso a periféricos.</p>
+            <p class="hacker-text">Ingeniería inversa desarrollada por:<br><span class="ko-brand">KOUSPAR TEAM</span></p>
+            <button class="hacker-btn" id="btn-aceptar">Aceptar Riesgo</button>
+        </div>
+
+        <div id="terminal-wrapper">
+            <div id="terminal-hack"></div>
+            <div id="terminal-status-bar">
+                <span style="color:#00ffff; font-weight:bold;">ESTADO: DESENCRIPTANDO</span>
+                <div class="progress-master"><div class="progress-master-fill" id="progreso-hacker"></div></div>
+                <span class="progress-text" id="texto-progreso-hacker">0.00%</span>
+            </div>
+        </div>
+        
+        <div id="btn-continuar-container"><button class="hacker-btn" id="btn-continuar">Forzar Anulacion</button></div>
+    </div>
+
+    <div id="pantalla-blanca" style="display:none;"></div>
+
+  
+    <div id="fase-tierna">
+        <!-- Orbes de fondo -->
+        <div class="orbe orbe-1"></div>
+        <div class="orbe orbe-2"></div>
+        <div class="orbe orbe-3"></div>
+
+        <div class="glass-panel" id="encuesta-container">
+            <div class="encuesta-header">
+                <div class="progreso-texto" id="texto-progreso">Pregunta 1 de 15</div>
+                <div class="barra-progreso-bg"><div class="barra-progreso-fill" id="barra-progreso"></div></div>
+            </div>
+            <h2 id="pregunta-titulo">Inicializando entorno seguro...</h2>
+            <div id="botones-respuestas"></div>
+        </div>
+
+        <div id="carta-escena">
+            <div class="carta-levitacion">
+                <div class="carta-parallax" id="carta-parallax">
+                    <div class="carta" id="mi-carta">
+                        <div class="cara cara-frente">
+                            <div class="sello-decorativo">S</div>
+                            <h3>Abreme</h3>
+                            <p>Toque para revelar</p>
+                        </div>
+                        <div class="cara cara-atras">
+                            <h2>Para Sofi</h2>
+                            <p>Queria pedirte perdon de todo corazon si alguna vez dude de ti.</p>
+                            <p>Eres una personita increible, llena de luz, y te has vuelto alguien sumamente especial para mi.</p>
+                            <p>Gracias por estar ahi. Te quiero muchisimo, nunca lo olvides.</p>
+                            <span class="firma">- Kevin</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dom = {
+            boot: document.getElementById('boot-screen'), matrix: document.getElementById('matrix'),
+            inicio: document.getElementById('inicio-container'), privacidad: document.getElementById('modal-privacidad'),
+            terminalWrap: document.getElementById('terminal-wrapper'), terminal: document.getElementById('terminal-hack'),
+            progresoHackerFill: document.getElementById('progreso-hacker'), progresoHackerTxt: document.getElementById('texto-progreso-hacker'),
+            contContinuar: document.getElementById('btn-continuar-container'), faseHacker: document.getElementById('fase-hacker'), 
+            faseTierna: document.getElementById('fase-tierna'), tvOff: document.getElementById('pantalla-blanca'),
+            encuesta: document.getElementById('encuesta-container'), cartaEscena: document.getElementById('carta-escena'),
+            btnEmpezar: document.getElementById('btn-empezar'), btnAceptar: document.getElementById('btn-aceptar'), btnContinuar: document.getElementById('btn-continuar')
+        };
+
+     
+        const bootText = [
+            "BIOS Date 09/24/26 15:23:44 Ver 08.00.15", "CPU: Intel(R) Core(TM) i9-11900K @ 3.50GHz",
+            "Speed: 3.50 GHz Count: 16", "Memory: 65536 MB OK", "Loading kernel modules... OK",
+            "Mounting local file systems... OK", "Starting network interface eth0... SUCCESS",
+            "Establishing connection to 192.168.1.104... CONNECTED", "Bypassing firewall protocols... DONE",
+            "Loading Kouspar Injector v4.2...", "Init complete."
+        ];
+        
+        let bootIndex = 0;
+        function runBootScreen() {
+            if (bootIndex < bootText.length) {
+                dom.boot.innerHTML += `<div>${bootText[bootIndex]} <span class="boot-cursor"></span></div>`;
+                const cursors = document.querySelectorAll('.boot-cursor');
+                if(cursors.length > 1) cursors[cursors.length - 2].remove();
+                bootIndex++;
+                setTimeout(runBootScreen, Math.random() * 150 + 40);
+            } else {
+                setTimeout(() => {
+                    dom.boot.style.display = 'none';
+                    dom.matrix.style.display = 'block';
+                    dom.inicio.style.display = 'block';
+                    iniciarMatrix();
+                }, 600);
+            }
+        }
+        window.onload = runBootScreen;
+
+        
+        let matrixInterval;
+        function iniciarMatrix() {
+            const canvas = document.getElementById('matrix'); const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            const chars = '01ABCDEFGHIJKLMNOPQRSTUVWXYZ$#@*&^%';
+            const fontSize = 14; const columns = canvas.width / fontSize; const drops = [];
+            for (let x = 0; x < columns; x++) drops[x] = Math.random() * -100;
+            
+            matrixInterval = setInterval(() => {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.08)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#0F0'; ctx.font = fontSize + 'px monospace';
+                for (let i = 0; i < drops.length; i++) {
+                    const text = chars.charAt(Math.floor(Math.random() * chars.length));
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                    if (drops[i] * fontSize > canvas.height && Math.random() > 0.98) drops[i] = 0;
+                    drops[i]++;
+                }
+            }, 33);
+        }
+
+       
+        dom.btnEmpezar.addEventListener('click', () => { dom.inicio.style.display = 'none'; dom.privacidad.style.display = 'block'; });
+        dom.btnAceptar.addEventListener('click', () => { dom.privacidad.style.display = 'none'; dom.terminalWrap.style.display = 'block'; iniciarAtaqueFalso(); });
+
+        const rutasSistema = ["/var/log/auth.log", "/etc/shadow", "/home/user/.ssh/id_rsa", "/sys/class/net/eth0", "/data/local/tmp/"];
+        const datosExtraer = ["Edad", "Fecha de Nacimiento", "Historial de WhatsApp", "Ubicacion GPS", "Correos Electronicos", "Contactos Telefonicos", "Galeria de Fotos", "Fotos Eliminadas", "Busquedas de YouTube", "Credenciales Bancarias", "Archivos Ocultos"];
+        
+        const getHex = () => Array(4).fill(0).map(() => Math.floor(Math.random()*0xFFFF).toString(16).padStart(4, '0').toUpperCase()).join(' ');
+        const getTime = () => { const d = new Date(); return `[${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}.${d.getMilliseconds().toString().padStart(3,'0')}]`; };
+        const getIP = () => `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`;
+
+        let tiempoHackeo = 0;
+        const TIEMPO_TOTAL = 30000; 
+
+        function iniciarAtaqueFalso() {
+            const startTime = Date.now();
+            
+            function agregarLinea() {
+                let elapsedTime = Date.now() - startTime;
+                let porcentaje = (elapsedTime / TIEMPO_TOTAL) * 100;
+                
+                if (porcentaje >= 100) { 
+                    porcentaje = 100;
+                    dom.progresoHackerFill.style.width = '100%';
+                    dom.progresoHackerTxt.innerText = '100.00%';
+                    dom.contContinuar.style.display = 'block'; 
+                    return; 
+                }
+
+               
+                dom.progresoHackerFill.style.width = `${porcentaje}%`;
+                dom.progresoHackerTxt.innerText = `${porcentaje.toFixed(2)}%`;
+
+                const tipoLinea = Math.random();
+                let htmlLinea = '';
+
+                if (tipoLinea < 0.3) {
+                    htmlLinea = `<span class="log-time">${getTime()}</span><span class="log-ip">TARGET:${getIP()}</span> ROOT ACCESS: Bypassing ${rutasSistema[Math.floor(Math.random()*rutasSistema.length)]}... <span class="status-done">OK</span>`;
+                } else if (tipoLinea < 0.6) {
+                    htmlLinea = `<span class="log-time">${getTime()}</span><span style="color:#fff;">[DUMP]</span> Extrayendo: ${datosExtraer[Math.floor(Math.random()*datosExtraer.length)]} <span class="log-hex">${getHex()}</span>`;
+                } else {
+                    htmlLinea = `<span class="log-time">${getTime()}</span><span class="status-warn">[WAIT]</span> Decrypting payload blocks... <span class="status-done">100% DONE</span>`;
+                }
+
+                const linea = document.createElement('div'); linea.classList.add('log-line'); linea.innerHTML = htmlLinea;
+                dom.terminal.appendChild(linea); dom.terminal.scrollTop = dom.terminal.scrollHeight;
+                
+                let suspensoTiempo = Math.random() < 0.15 ? (Math.random() * 800 + 400) : (Math.random() * 200 + 80);
+                setTimeout(agregarLinea, suspensoTiempo);
+            }
+            agregarLinea(); 
+        }
+
+       
+        dom.btnContinuar.addEventListener('click', () => {
+            clearInterval(matrixInterval);
+            
+            dom.tvOff.style.display = 'block';
+            dom.faseHacker.classList.add('tv-off');
+            
+            setTimeout(() => {
+                dom.faseHacker.style.display = 'none';
+                document.querySelector('.crt-overlay').style.display = 'none';
+                document.querySelector('.scanline').style.display = 'none';
+                dom.tvOff.style.display = 'none';
+                
+                dom.faseTierna.style.display = 'block';
+                cargarPregunta(); 
+                iniciarCorazonesCSS();
+            }, 700); 
+        });
+
+  
+        function iniciarCorazonesCSS() {
+            setInterval(() => {
+                const corazon = document.createElement('div');
+                corazon.classList.add('css-heart');
+                corazon.style.left = Math.random() * 95 + 'vw';
+                corazon.style.transform = `scale(${Math.random() * 1.5 + 0.5}) rotate(-45deg)`;
+                
+      
+                const duracion = Math.random() * 5 + 7;
+                corazon.style.animation = `flotarCorazon ${duracion}s ease-in-out forwards`;
+                
+                dom.faseTierna.appendChild(corazon);
+                setTimeout(() => corazon.remove(), duracion * 1000);
+            }, 250); 
+        }
+
+      
+        const preguntas = [
+            { p: "Si me desaparezco y no respondo por horas, que estoy haciendo?", o: ["Peleando con un codigo", "Jugando Lords Mobile", "Me quede dormido"] },
+            { p: "Si estamos en llamada y de repente me quedo en silencio...", o: ["Se me cayo el internet", "Me concentre programando", "Algo me paso"] },
+            { p: "Si hacemos videollamada a las 3 a.m., terminamos hablando de...", o: ["La universidad", "Problemas existenciales", "Por que no podemos dormir"] },
+            { p: "Cual dirias que es mi peor costumbre cuando chateamos?", o: ["Escribir muchos mensajes cortos", "Responder horas despues", "Dejar en visto por accidente"] },
+            { p: "Cuando me frustro porque mi codigo tiene errores, como reacciono?", o: ["Me quejo sin parar", "Digo que voy a rendirme", "Me aislo hasta arreglarlo"] },
+            { p: "Si jugaramos juntos en Lords Mobile, cual seria mi rol?", o: ["El estratega calculador", "El que ataca a lo loco", "El lider que nos salva"] },
+            { p: "Cuando te hablo de Educa Pro+ o mis proyectos, que vibra te doy?", o: ["De futuro millonario", "De genio incomprendido", "De un inventor loquito"] },
+            { p: "De las cosas que te cuento, que es lo que menos entiendes?", o: ["Mis codigos web", "Cosas de quimica organica", "Configuracion de redes"] },
+            { p: "Que cualidad mia crees que te hace tenerme paciencia?", o: ["Mi sentido del humor", "Que siempre te escucho", "Que soy incondicional"] },
+            { p: "Cuando abriste este link de 'hackeo', cual fue tu reaccion?", o: ["No cai para nada", "Dude un par de segundos", "Casi apago el computador del susto"] },
+            { p: "Cual suele ser nuestro tema de conversacion mas frecuente?", o: ["Quejarnos de estudiar", "Planear cosas a futuro", "Hablar de trivialidades"] },
+            { p: "Si nos conocemos en persona algun dia, como seria el saludo?", o: ["Un abrazo gigante", "Risas de puro nerviosismo", "Hablar sin parar al instante"] },
+            { p: "Quien suele romper el hielo si tenemos una discusion boba?", o: ["Casi siempre yo", "Casi siempre tu", "Hacemos como si nada paso"] },
+            { p: "Que es lo mas valioso de nuestra amistad a distancia?", o: ["La confianza mutua", "Que no hay presiones", "Que siempre estamos para el otro"] },
+            { p: "Honestamente, que es lo que mas valoras de mi sofi??", o: ["Tu forma de ser", "Que aguantas todas mis locuras", "Tu compañia irremplazable"] }
+        ];
+
+        let pActual = 0;
+        const tit = document.getElementById('pregunta-titulo'); const cajas = document.getElementById('botones-respuestas');
+        const txtProgreso = document.getElementById('texto-progreso'); const barraProgreso = document.getElementById('barra-progreso');
+
+        function cargarPregunta() {
+            cajas.innerHTML = '';
+            tit.innerText = preguntas[pActual].p;
+            txtProgreso.innerText = `Pregunta ${pActual + 1} de 15`;
+            barraProgreso.style.width = `${((pActual + 1) / 15) * 100}%`;
+            
+            preguntas[pActual].o.forEach(texto => {
+                let btn = document.createElement('button'); btn.classList.add('btn-glass'); btn.innerText = texto;
+                btn.addEventListener('click', (e) => {
+                    crearChispasMagicasFisica(e.clientX, e.clientY);
+                    pActual++;
+                    setTimeout(() => {
+                        if (pActual < preguntas.length) cargarPregunta();
+                        else { 
+                            dom.encuesta.style.display = 'none'; 
+                            dom.cartaEscena.style.display = 'block'; 
+                            iniciarRastreoRaton();
+                        }
+                    }, 500);
+                });
+                cajas.appendChild(btn);
+            });
+        }
+
+      
+        function crearChispasMagicasFisica(x, y) {
+            for (let i = 0; i < 25; i++) {
+                let c = document.createElement('div'); c.classList.add('chispa-magica');
+                c.style.left = x + 'px'; c.style.top = y + 'px';
+                document.body.appendChild(c);
+                
+                let angle = Math.random() * Math.PI * 2;
+                let velocity = Math.random() * 15 + 5;
+                let vx = Math.cos(angle) * velocity;
+                let vy = Math.sin(angle) * velocity;
+                let posX = x; let posY = y;
+                
+                let animation = setInterval(() => {
+                    vy += 0.5; 
+                    vx *= 0.95; 
+                    posX += vx; posY += vy;
+                    c.style.left = posX + 'px'; c.style.top = posY + 'px';
+                    c.style.opacity = parseFloat(c.style.opacity || 1) - 0.03;
+                    if (c.style.opacity <= 0) { clearInterval(animation); c.remove(); }
+                }, 16);
+            }
+        }
+
+        
+        const cartaParallax = document.getElementById('carta-parallax');
+        const cartaReal = document.getElementById('mi-carta');
+        let rastreoActivo = false;
+
+        function iniciarRastreoRaton() {
+            rastreoActivo = true;
+            document.addEventListener('mousemove', (e) => {
+                if(!rastreoActivo) return;
+            
+                let xAxis = (window.innerWidth / 2 - e.pageX) / 25;
+                let yAxis = (window.innerHeight / 2 - e.pageY) / 25;
+                cartaParallax.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+            });
+        }
+
+        cartaReal.addEventListener('click', function(e) { 
+            if(!this.classList.contains('abierta')) {
+           
+                rastreoActivo = false;
+                cartaParallax.style.transform = `rotateY(0deg) rotateX(0deg)`;
+                
+                this.classList.add('abierta'); 
+                
+          
+                const rect = this.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                for(let j=0; j<3; j++) {
+                    setTimeout(() => crearChispasMagicasFisica(centerX, centerY), j*150);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
